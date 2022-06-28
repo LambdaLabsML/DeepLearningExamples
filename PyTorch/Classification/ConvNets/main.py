@@ -47,7 +47,8 @@ import image_classification.logger as log
 from image_classification.smoothing import LabelSmoothing
 from image_classification.mixup import NLLMultiLabelSmooth, MixUpWrapper
 from image_classification.dataloaders import *
-from image_classification.training import *
+from lambdalabs.training import *
+
 from image_classification.utils import *
 from image_classification.models import (
     resnet50,
