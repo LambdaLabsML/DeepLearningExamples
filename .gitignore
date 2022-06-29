@@ -3,4 +3,4 @@ repos_init.cfg
 nvtool*
 *.pyc
 benchmark.json
-lambda.json
+lambdalabs/*
