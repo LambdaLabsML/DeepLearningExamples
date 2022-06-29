@@ -11,12 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 from torch.autograd import Variable
 import torch
 import time
 
 from apex import amp
+
+from dllogger import Logger, StdOutBackend, JSONStreamBackend, Verbosity
+
+world_size = (
+    torch.distributed.get_world_size() if torch.distributed.is_initialized() else 1
+)
+LAMBDA_LOG_BATCH_SIZE = os.getenv('LAMBDA_LOG_BATCH_SIZE') * world_size
+LAMDBA_LOG_DIR = os.getenv('LAMDBA_LOG_DIR')
+os.makedirs(LAMDBA_LOG_DIR, exist_ok=True)
+lambdalogger = Logger(
+    [
+        StdOutBackend(Verbosity.DEFAULT),
+        JSONStreamBackend(Verbosity.VERBOSE, os.path.join(LAMDBA_LOG_DIR, "bs_" + LAMBDA_LOG_BATCH_SIZE + ".json")),
+    ]
+)
+
 
 def train_loop(model, loss_func, scaler, epoch, optim, train_dataloader, val_dataloader, encoder, iteration, logger, args, mean, std):
     for nbatch, data in enumerate(train_dataloader):
@@ -63,6 +79,7 @@ def train_loop(model, loss_func, scaler, epoch, optim, train_dataloader, val_dat
 
         if args.local_rank == 0:
             logger.update_iter(epoch, iteration, loss.item())
+
         iteration += 1
 
     return iteration
@@ -124,6 +141,7 @@ def benchmark_train_loop(model, loss_func, scaler, epoch, optim, train_dataloade
         if nbatch >= args.benchmark_warmup:
             torch.cuda.synchronize()
             logger.update(args.batch_size*args.N_gpu, time.time() - start_time)
+            lambdalogger.log(step="NONE", data={"throughput": args.batch_size*args.N_gpu / (time.time() - start_time), "logger": "lambda"}, verbosity=Verbosity.DEFAULT)
 
     result.data[0] = logger.print_result()
     if args.N_gpu > 1:

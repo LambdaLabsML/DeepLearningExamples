@@ -55,3 +55,35 @@ python ./launch.py --model efficientnet-b0 \
 --data-backend synthetic && \
 chmod -R 777 $LAMDBA_LOG_DIR
 ```
+
+
+## Detection
+
+### SSD
+
+```
+cd /home/ubuntu/repos/DeepLearningExamples/PyTorch/Detection/SSD
+./download_dataset.sh ~/data-deeplearningexamples
+
+docker build . -t nvidia_ssd
+
+docker run --gpus 1 \
+--rm -it \
+-v /home/ubuntu/repos/DeepLearningExamples/PyTorch/Detection/SSD:/code \
+-v /home/ubuntu/repos/DeepLearningExamples/lambdalabs:/lambdalabs \
+-v /home/ubuntu/data-deep-learning-examples/mscoco:/coco \
+--ipc=host \
+--workdir=/code \
+nvidia_ssd
+
+export BATCH_SIZE=128
+export LAMBDA_LOG_BATCH_SIZE=$BATCH_SIZE
+export LAMDBA_LOG_DIR=/lambdalabs/PyTorch/ssd/QuadroRTX8000/FP32
+
+python -m torch.distributed.launch --nproc_per_node=1 \
+       main.py --batch-size $BATCH_SIZE \
+               --mode benchmark-training \
+               --benchmark-warmup 20 \
+               --benchmark-iterations 40 \
+               --data /coco
+```
