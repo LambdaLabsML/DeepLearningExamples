@@ -27,10 +27,12 @@
 # CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import os
 import time
 from copy import deepcopy
 from functools import wraps
 from typing import Callable, Dict, Optional, Tuple
+from dllogger import Logger, StdOutBackend, JSONStreamBackend, Verbosity
 
 import torch
 import torch.nn as nn
@@ -41,6 +43,20 @@ from . import logger as log
 from . import utils
 from .logger import TrainingMetrics, ValidationMetrics
 from .models.common import EMA
+
+
+world_size = (
+    torch.distributed.get_world_size() if torch.distributed.is_initialized() else 1
+)
+LAMBDA_LOG_BATCH_SIZE = os.getenv('LAMBDA_LOG_BATCH_SIZE') * world_size
+LAMDBA_LOG_DIR = os.getenv('LAMDBA_LOG_DIR')
+os.makedirs(LAMDBA_LOG_DIR, exist_ok=True)
+lambdalogger = Logger(
+    [
+        StdOutBackend(Verbosity.DEFAULT),
+        JSONStreamBackend(Verbosity.VERBOSE, os.path.join(LAMDBA_LOG_DIR, "bs_" + LAMBDA_LOG_BATCH_SIZE + ".json")),
+    ]
+)
 
 
 class Executor:
@@ -230,6 +246,8 @@ def train(
                 reduced_loss = utils.reduce_tensor(loss.detach())
             else:
                 reduced_loss = loss.detach()
+        
+        lambdalogger.log(step="NONE", data={"throughput": utils.calc_ips(bs, it_time), "logger": "lambda"}, verbosity=Verbosity.DEFAULT)
 
         log_fn(
             compute_ips=utils.calc_ips(bs, it_time - data_time),
