@@ -21,9 +21,12 @@
 # SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES
 # SPDX-License-Identifier: MIT
 
+import os
+import time
 import logging
 import pathlib
 from typing import List
+import dllogger
 
 import numpy as np
 import torch
@@ -48,6 +51,18 @@ from se3_transformer.runtime.loggers import LoggerCollection, DLLogger, WandbLog
 from se3_transformer.runtime.utils import to_cuda, get_local_rank, init_distributed, seed_everything, \
     using_tensor_cores, increase_l2_fetch_granularity
 
+world_size = (
+    torch.distributed.get_world_size() if torch.distributed.is_initialized() else 1
+)
+LAMBDA_LOG_BATCH_SIZE = int(os.getenv('LAMBDA_LOG_BATCH_SIZE')) * world_size
+LAMDBA_LOG_DIR = os.getenv('LAMDBA_LOG_DIR')
+os.makedirs(LAMDBA_LOG_DIR, exist_ok=True)
+lambdalogger = dllogger.Logger(
+    [
+        dllogger.StdOutBackend(dllogger.Verbosity.DEFAULT),
+        dllogger.JSONStreamBackend(dllogger.Verbosity.VERBOSE, os.path.join(LAMDBA_LOG_DIR, "bs_" + str(LAMBDA_LOG_BATCH_SIZE) + ".json")),
+    ]
+)
 
 def save_state(model: nn.Module, optimizer: Optimizer, epoch: int, path: pathlib.Path, callbacks: List[BaseCallback]):
     """ Saves model, optimizer and epoch states to path (only once per node) """
@@ -85,6 +100,7 @@ def train_epoch(model, train_dataloader, loss_fn, epoch_idx, grad_scaler, optimi
     losses = []
     for i, batch in tqdm(enumerate(train_dataloader), total=len(train_dataloader), unit='batch',
                          desc=f'Epoch {epoch_idx}', disable=(args.silent or local_rank != 0)):
+        t_start = time.time()
         *inputs, target = to_cuda(batch)
 
         for callback in callbacks:
@@ -107,6 +123,9 @@ def train_epoch(model, train_dataloader, loss_fn, epoch_idx, grad_scaler, optimi
             model.zero_grad(set_to_none=True)
 
         losses.append(loss.item())
+
+        if i % 10 == 0:
+            lambdalogger.log(step="NONE", data={"throughput": LAMBDA_LOG_BATCH_SIZE / (time.time() - t_start), "logger": "lambda"}, verbosity=dllogger.Verbosity.DEFAULT)
 
     return np.mean(losses)
 

@@ -93,30 +93,37 @@ python -m torch.distributed.launch --nproc_per_node=1 \
 
 ### SE3Transformer
 
+TODO: need to mount the deeplearning repo and make sure logs are written correctly
+
+mkdir -p ~/temp/results
+
 ```
 cd /home/ubuntu/repos/DeepLearningExamples/DGLPyTorch/DrugDiscovery/SE3Transformer
 
 docker build -t se3-transformer .
-
-mkdir -p ~/temp/results
 
 docker run --gpus 1 \
 --rm -it \
 --shm-size=8g \
 --ulimit memlock=-1 \
 --ulimit stack=67108864 \
---rm -v ${HOME}/temp/results:/results se3-transformer:latest
+-v /home/ubuntu/repos/DeepLearningExamples/DGLPyTorch/DrugDiscovery/SE3Transformer:/code \
+-v /home/ubuntu/repos/DeepLearningExamples/lambdalabs:/lambdalabs \
+--workdir=/code \
+--rm se3-transformer:latest
 
 
-export BATCH_SIZE=240
+export BATCH_SIZE=32
 export AMP=true
 export NUM_GPU=1 
+export LAMBDA_LOG_BATCH_SIZE=$BATCH_SIZE
+export LAMDBA_LOG_DIR=/lambdalabs/PyTorch/se3-transformer/QuadroRTX8000/FP32
 
 python -m torch.distributed.run --nnodes=1 --nproc_per_node=$NUM_GPU --max_restarts 0 --module \
   se3_transformer.runtime.training \
   --amp $AMP \
   --batch_size $BATCH_SIZE \
-  --epochs 6 \
+  --epochs 1 \
   --use_layer_norm \
   --norm \
   --save_ckpt_path model_qm9.pth \
@@ -130,7 +137,7 @@ python -m torch.distributed.run --nnodes=1 --nproc_per_node=$NUM_GPU --max_resta
 CUDA_VISIBLE_DEVICES=0 python -m se3_transformer.runtime.training \
   --amp $AMP \
   --batch_size $BATCH_SIZE \
-  --epochs 6 \
+  --epochs 1 \
   --use_layer_norm \
   --norm \
   --save_ckpt_path model_qm9.pth \

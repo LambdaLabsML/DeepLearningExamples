@@ -48,13 +48,13 @@ from .models.common import EMA
 world_size = (
     torch.distributed.get_world_size() if torch.distributed.is_initialized() else 1
 )
-LAMBDA_LOG_BATCH_SIZE = os.getenv('LAMBDA_LOG_BATCH_SIZE') * world_size
+LAMBDA_LOG_BATCH_SIZE = int(os.getenv('LAMBDA_LOG_BATCH_SIZE')) * world_size
 LAMDBA_LOG_DIR = os.getenv('LAMDBA_LOG_DIR')
 os.makedirs(LAMDBA_LOG_DIR, exist_ok=True)
 lambdalogger = Logger(
     [
         StdOutBackend(Verbosity.DEFAULT),
-        JSONStreamBackend(Verbosity.VERBOSE, os.path.join(LAMDBA_LOG_DIR, "bs_" + LAMBDA_LOG_BATCH_SIZE + ".json")),
+        JSONStreamBackend(Verbosity.VERBOSE, os.path.join(LAMDBA_LOG_DIR, "bs_" + str(LAMBDA_LOG_BATCH_SIZE) + ".json")),
     ]
 )
 
