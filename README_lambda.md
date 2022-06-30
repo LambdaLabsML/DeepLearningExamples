@@ -87,3 +87,62 @@ python -m torch.distributed.launch --nproc_per_node=1 \
                --benchmark-iterations 40 \
                --data /coco
 ```
+
+
+## DrugDiscovery
+
+### SE3Transformer
+
+```
+cd /home/ubuntu/repos/DeepLearningExamples/DGLPyTorch/DrugDiscovery/SE3Transformer
+
+docker build -t se3-transformer .
+
+mkdir -p ~/temp/results
+
+docker run --gpus 1 \
+--rm -it \
+--shm-size=8g \
+--ulimit memlock=-1 \
+--ulimit stack=67108864 \
+--rm -v ${HOME}/temp/results:/results se3-transformer:latest
+
+
+export BATCH_SIZE=240
+export AMP=true
+export NUM_GPU=1 
+
+python -m torch.distributed.run --nnodes=1 --nproc_per_node=$NUM_GPU --max_restarts 0 --module \
+  se3_transformer.runtime.training \
+  --amp $AMP \
+  --batch_size $BATCH_SIZE \
+  --epochs 6 \
+  --use_layer_norm \
+  --norm \
+  --save_ckpt_path model_qm9.pth \
+  --task homo \
+  --precompute_bases \
+  --seed 42 \
+  --benchmark
+
+
+
+CUDA_VISIBLE_DEVICES=0 python -m se3_transformer.runtime.training \
+  --amp $AMP \
+  --batch_size $BATCH_SIZE \
+  --epochs 6 \
+  --use_layer_norm \
+  --norm \
+  --save_ckpt_path model_qm9.pth \
+  --task homo \
+  --precompute_bases \
+  --seed 42 \
+  --benchmark
+```
+
+
+# Caveats
+
+## Have a mixed GPU servers can be a problem
+
+Some libraries, such as `dgl`, does auto detection of GPU architecture and build for a specific version. The build works for the first GPU it detected, and may not work for the others if they are a different sm generation.

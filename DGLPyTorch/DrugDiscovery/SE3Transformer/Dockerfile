@@ -33,8 +33,7 @@ RUN apt-get update \
     && apt-get install -y git build-essential python3-dev make cmake \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /dgl
-RUN git clone --branch v0.7.0 --recurse-submodules --depth 1 https://github.com/dmlc/dgl.git .
-RUN sed -i 's/"35 50 60 70"/"60 70 80"/g' cmake/modules/CUDA.cmake
+RUN git clone --branch lambda/all-sm --recurse-submodules --depth 1 https://github.com/chuanli11/dgl.git .
 WORKDIR build
 RUN cmake -DUSE_CUDA=ON -DUSE_FP16=ON ..
 RUN make -j8
