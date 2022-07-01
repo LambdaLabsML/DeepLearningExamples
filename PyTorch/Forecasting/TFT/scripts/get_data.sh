@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DATAPATH='/data'
+
+DATAPATH=${HOME}"/data-deep-learning-benchmark/pytorch/forcasting/tft"
+
+echo $DATAPATH
 
 declare -A URLS=( ['electricity']='https://archive.ics.uci.edu/ml/machine-learning-databases/00321/LD2011_2014.txt.zip'
                   ['traffic']='https://archive.ics.uci.edu/ml/machine-learning-databases/00204/PEMS-SF.zip'

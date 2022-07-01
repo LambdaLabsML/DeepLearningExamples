@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import argparse
 import time
 import os
 import pickle
 import json
+import dllogger
 
 import torch
 import torch.nn as nn
@@ -41,6 +43,19 @@ from inference import predict
 from utils import PerformanceMeter
 import gpu_affinity
 from ema import ModelEma
+
+world_size = (
+    torch.distributed.get_world_size() if torch.distributed.is_initialized() else 1
+)
+LAMBDA_LOG_BATCH_SIZE = int(os.getenv('LAMBDA_LOG_BATCH_SIZE')) * world_size
+LAMDBA_LOG_DIR = os.getenv('LAMDBA_LOG_DIR')
+os.makedirs(LAMDBA_LOG_DIR, exist_ok=True)
+lambdalogger = dllogger.Logger(
+    [
+        dllogger.StdOutBackend(dllogger.Verbosity.DEFAULT),
+        dllogger.JSONStreamBackend(dllogger.Verbosity.VERBOSE, os.path.join(LAMDBA_LOG_DIR, "bs_" + str(LAMBDA_LOG_BATCH_SIZE) + ".json")),
+    ]
+)
 
 def load_dataset(args, config):
     train_split = TFTBinaryDataset(os.path.join(args.data_path, 'train.bin'), config)
@@ -137,6 +152,7 @@ def main(args):
 
         model.train() 
         for local_step, batch in enumerate(train_loader):
+            t_start = time.time()
             perf_meter.reset_current_lap()
             batch = {key: tensor.cuda() if tensor.numel() else None for key, tensor in batch.items()}
             predictions = model(batch)
@@ -169,6 +185,9 @@ def main(args):
             log_dict = {'P10':p_losses[0].item(), 'P50':p_losses[1].item(), 'P90':p_losses[2].item(), 'loss': loss.item(), 'items/s':ips}
             dllogger.log(step=global_step, data=log_dict, verbosity=1)
             global_step += 1
+
+            if local_step % 10 == 0:
+                lambdalogger.log(step="NONE", data={"throughput": LAMBDA_LOG_BATCH_SIZE / (time.time() - t_start), "logger": "lambda"}, verbosity=dllogger.Verbosity.DEFAULT)
 
         validate(args, config, model_ema if args.ema_decay else model, criterion, valid_loader, global_step)
 

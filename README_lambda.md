@@ -147,6 +147,62 @@ CUDA_VISIBLE_DEVICES=0 python -m se3_transformer.runtime.training \
   --benchmark
 ```
 
+## Forecasting
+
+### TFT
+
+```
+docker run --gpus 1 \
+--rm -it \
+--shm-size=8g \
+--ulimit memlock=-1 \
+--ulimit stack=67108864 \
+-v /home/ubuntu/repos/DeepLearningExamples/PyTorch/Forecasting/TFT:/code \
+-v /home/ubuntu/repos/DeepLearningExamples/lambdalabs:/lambdalabs \
+-v /home/ubuntu/data-deep-learning-benchmark/pytorch/forcasting/tft:/data/ \
+--workdir=/code \
+tft
+
+
+export SEED=1
+export LR=1e-3
+export NGPU=1
+export BATCH_SIZE=1024
+export EPOCHS=1
+export LAMBDA_LOG_BATCH_SIZE=$BATCH_SIZE
+export LAMDBA_LOG_DIR=/lambdalabs/PyTorch/TFT_electricity_bin/QuadroRTX8000/FP32
+
+python -m torch.distributed.run --nproc_per_node=${NGPU} train.py \
+        --dataset electricity \
+        --data_path /data/processed/electricity_bin \
+        --batch_size=${BATCH_SIZE} \
+        --sample 450000 50000 \
+        --lr ${LR} \
+        --epochs 1 \
+        --seed ${SEED} \
+        --use_amp \
+        --results /results/TFT_electricity_bs${NGPU}x${BATCH_SIZE}_lr${LR}/seed_${SEED}
+
+export SEED=1
+export LR=1e-3
+export NGPU=1
+export BATCH_SIZE=1024
+export EPOCHS=1
+export LAMBDA_LOG_BATCH_SIZE=$BATCH_SIZE
+export LAMDBA_LOG_DIR=/lambdalabs/PyTorch/TFT_traffic_bin/QuadroRTX8000/FP32
+
+python -m torch.distributed.run --nproc_per_node=${NGPU} train.py \
+        --dataset traffic \
+        --data_path /data/processed/traffic_bin \
+        --batch_size=${BATCH_SIZE} \
+        --sample 450000 50000 \
+        --lr ${LR} \
+        --epochs ${EPOCHS} \
+        --seed ${SEED} \
+        --use_amp \
+        --results /results/TFT_traffic_bs${NGPU}x${BATCH_SIZE}_lr${LR}/seed_${SEED}
+```
+
 
 # Caveats
 
