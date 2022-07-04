@@ -43,6 +43,21 @@ from optimization import BertAdam, warmup_linear
 from tokenization import (BasicTokenizer, BertTokenizer, whitespace_tokenize)
 from utils import is_main_process, format_step
 import dllogger, time
+from dllogger import Logger, StdOutBackend, JSONStreamBackend, Verbosity
+
+world_size = (
+    torch.distributed.get_world_size() if torch.distributed.is_initialized() else 1
+)
+LAMBDA_LOG_BATCH_SIZE = int(os.getenv('LAMBDA_LOG_BATCH_SIZE')) * world_size
+LAMDBA_LOG_DIR = os.getenv('LAMDBA_LOG_DIR')
+os.makedirs(LAMDBA_LOG_DIR, exist_ok=True)
+lambdalogger = Logger(
+    [
+        StdOutBackend(Verbosity.DEFAULT),
+        JSONStreamBackend(Verbosity.VERBOSE, os.path.join(LAMDBA_LOG_DIR, "bs_" + str(LAMBDA_LOG_BATCH_SIZE) + ".json")),
+    ]
+)
+
 
 torch._C._jit_set_profiling_mode(False)
 torch._C._jit_set_profiling_executor(False)
@@ -1047,6 +1062,7 @@ def main():
         for epoch in range(int(args.num_train_epochs)):
             train_iter = tqdm(train_dataloader, desc="Iteration", disable=args.disable_progress_bar) if is_main_process() else train_dataloader
             for step, batch in enumerate(train_iter):
+                t_start = time.time()
                 # Terminate early for benchmarking
 
                 if args.max_steps > 0 and global_step > args.max_steps:
@@ -1095,6 +1111,8 @@ def main():
                 if step % args.log_freq == 0:
                     dllogger.log(step=(epoch, global_step,), data={"step_loss": final_loss,
                                                                 "learning_rate": optimizer.param_groups[0]['lr']})
+
+                lambdalogger.log(step="NONE", data={"throughput": LAMBDA_LOG_BATCH_SIZE / (time.time() - t_start), "logger": "lambda"}, verbosity=dllogger.Verbosity.DEFAULT)
         time_to_train = time.time() - train_start
 
     if args.do_train and is_main_process() and not args.skip_checkpoint:

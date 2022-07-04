@@ -204,6 +204,136 @@ python -m torch.distributed.run --nproc_per_node=${NGPU} train.py \
 ```
 
 
+## Language Modeling
+
+### BERT
+
+```
+export DATA_DIR=~/data-deeplearningexamples
+mkdir -p ${DATA_DIR}/data/squad
+
+cd /home/ubuntu/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT
+pushd .
+./data/squad/squad_download.sh ${DATA_DIR}/data/squad
+popd
+chmod -R a+rwx ${DATA_DIR}/data/squad
+
+
+Pre-trained BERT model from this link
+https://github.com/NVIDIA/DeepLearningExamples/tree/master/PyTorch/LanguageModeling/BERT#quick-start-guide
+
+
+For SQuAd should be the QA models:
+https://catalog.ngc.nvidia.com/orgs/nvidia/models/bert_pyt_ckpt_large_qa_squad11_amp/files
+https://catalog.ngc.nvidia.com/orgs/nvidia/models/bert_pyt_ckpt_base_qa_squad11_amp/files
+
+
+pushd .
+mkdir -p ${DATA_DIR}/data/bert_large
+cd ${DATA_DIR}/data/bert_large
+curl -LO https://lambdalabs-files.s3-us-west-2.amazonaws.com/bert_large/bert_large_qa.pt
+curl -LO https://lambdalabs-files.s3-us-west-2.amazonaws.com/bert_large/bert_config.json
+wget https://lambdalabs-files.s3-us-west-2.amazonaws.com/bert_large/bert-large-uncased-vocab.txt
+popd
+chmod -R a+rwx ${DATA_DIR}/data/bert_large
+
+pushd .
+mkdir -p ${DATA_DIR}/data/bert_base
+cd ${DATA_DIR}/data/bert_base
+curl -LO https://lambdalabs-files.s3-us-west-2.amazonaws.com/bert_base/bert_base_qa.pt
+curl -LO https://lambdalabs-files.s3-us-west-2.amazonaws.com/bert_base/bert_config.json
+wget https://lambdalabs-files.s3-us-west-2.amazonaws.com/bert_base/bert-base-uncased-vocab.txt
+popd
+chmod -R a+rwx ${DATA_DIR}/data/bert_base
+
+
+# Build the docker image
+bash scripts/docker/build.sh
+
+
+# Launch the container 
+export DOCKER_BRIDGE=host
+export IMAGE=bert
+export DATA_DIR=${HOME}/data-deeplearningexamples/data
+export RESULTS_DIR=${HOME}/data-deeplearningexamples/results
+
+mkdir -p $RESULTS_DIR
+
+docker run -it --rm \
+--gpus 1 \
+--net=$DOCKER_BRIDGE \
+--shm-size=8g \
+--ulimit memlock=-1 \
+--ulimit stack=67108864 \
+-v $DATA_DIR:/data \
+-v $RESULTS_DIR:/results \
+-v /home/ubuntu/repos/DeepLearningExamples/PyTorch/LanguageModeling/BERT:/code \
+-v /home/ubuntu/repos/DeepLearningExamples/lambdalabs:/lambdalabs \
+--workdir=/code \
+$IMAGE
+
+# Run the jobs 
+
+export NUM_GPU=1 
+export LAMBDA_LOG_BATCH_SIZE=4
+
+# BERT Base
+export LAMDBA_LOG_DIR=/lambdalabs/PyTorch/LanguageModeling_bert_base_SQuAD/QuadroRTX8000/FP32
+export init_checkpoint=/data/bert_base/bert_base_qa.pt
+export epochs=1
+export batch_size=${LAMBDA_LOG_BATCH_SIZE}
+export learning_rate=3e-5
+export warmup_proportion=0.1
+export precision=fp32
+export NUM_GPU=1
+export seed=1
+export squad_dir=/data/squad/v1.1
+export vocab_file=/data/bert_base/bert-base-uncased-vocab.txt
+export OUT_DIR=/results/SQuAD
+export mode=train
+export CONFIG_FILE=/data/bert_base/bert_config.json
+export max_steps=100
+
+
+# BERT Large
+export LAMDBA_LOG_DIR=/lambdalabs/PyTorch/LanguageModeling_bert_large_SQuAD/QuadroRTX8000/FP32
+export init_checkpoint=/data/bert_large/bert_large_qa.pt
+export epochs=1
+export batch_size=${LAMBDA_LOG_BATCH_SIZE}
+export learning_rate=3e-5
+export warmup_proportion=0.1
+export precision=fp32
+export NUM_GPU=1
+export seed=1
+export squad_dir=/data/squad/v1.1
+export vocab_file=/data/bert_large/bert-large-uncased-vocab.txt
+export OUT_DIR=/results/SQuAD
+export mode=train
+export CONFIG_FILE=/data/bert_large/bert_config.json
+export max_steps=100
+
+
+bash scripts/run_squad.sh \
+$init_checkpoint \
+$epochs \
+$batch_size \
+$learning_rate \
+$warmup_proportion \
+$precision \
+$NUM_GPU \
+$seed \
+$squad_dir \
+$vocab_file \
+$OUT_DIR \
+$mode \
+$CONFIG_FILE \
+$max_steps
+
+```
+
+
+
+
 # Caveats
 
 ## Have a mixed GPU servers can be a problem

@@ -13,7 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+DIR_DATA=${1:-"/data/squad"}
+
+echo $DIR_DATA
 echo "Downloading dataset for squad..."
+
+# Download SQuAD
+
+pushd .
+cd $DIR_DATA
 
 # Download SQuAD
 
