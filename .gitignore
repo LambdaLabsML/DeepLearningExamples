@@ -3,3 +3,6 @@ repos_init.cfg
 nvtool*
 *.pyc
 *.json
+
+PyTorch/LanguageModeling/BART/lightning_logs/*
+PyTorch/LanguageModeling/BART/results/*

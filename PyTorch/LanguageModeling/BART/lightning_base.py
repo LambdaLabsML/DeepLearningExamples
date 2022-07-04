@@ -178,7 +178,7 @@ class BaseTransformer(pl.LightningModule):
             dataset_size = len(self.train_loader.dataset)
             return (dataset_size / effective_batch_size) * self.hparams.max_epochs
 
-    def setup(self, mode):
+    def setup(self, mode="fit", stage=None):
         if mode == "fit":
             self.train_loader = self.get_dataloader("train", self.hparams.train_batch_size, shuffle=True)
 

@@ -331,7 +331,62 @@ $max_steps
 
 ```
 
+### BART
 
+```
+# Build image
+bash scripts/docker/build.sh
+
+
+# Launch docker
+export DATA_DIR=~/data-deeplearningexamples
+
+mkdir -p ${DATA_DIR}/data/bart
+
+docker run -it --rm \
+--gpus 1 \
+--ipc=host \
+--shm-size=8g \
+--ulimit memlock=-1 \
+--ulimit stack=67108864 \
+-v ${DATA_DIR}/data/bart:/data \
+-v /home/ubuntu/repos/DeepLearningExamples/lambdalabs:/lambdalabs \
+-v ${PWD}:/code \
+--workdir=/code bart_pyt
+
+# Download data
+bash scripts/get_data.sh /data
+
+# Run job
+export LAMBDA_LOG_BATCH_SIZE=12
+export MAX_SOURCE_LEN=1024
+export MAX_TARGET_LEN=60
+export DATA_DIR=/data/xsum
+export NUM_GPU=1
+export precision=fp32
+export LAMDBA_LOG_DIR=/lambdalabs/PyTorch/LanguageModeling_bart_xsum/QuadroRTX8000/FP32
+
+
+export LAMBDA_LOG_BATCH_SIZE=24
+export MAX_SOURCE_LEN=1024
+export MAX_TARGET_LEN=60
+export DATA_DIR=/data/xsum
+export NUM_GPU=1
+export precision=fp16
+export LAMDBA_LOG_DIR=/lambdalabs/PyTorch/LanguageModeling_bart_xsum/QuadroRTX8000/FP16
+
+
+bash scripts/run_training_benchmark.sh \
+$LAMBDA_LOG_BATCH_SIZE \
+$MAX_SOURCE_LEN \
+$MAX_TARGET_LEN \
+$DATA_DIR \
+$NUM_GPU \
+$precision
+
+
+
+```
 
 
 # Caveats

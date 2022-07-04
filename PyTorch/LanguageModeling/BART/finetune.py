@@ -60,6 +60,22 @@ from utils.distributed_utils import get_rank
 import dllogger
 import time
 
+from dllogger import Logger, StdOutBackend, JSONStreamBackend, Verbosity
+
+world_size = (
+    torch.distributed.get_world_size() if torch.distributed.is_initialized() else 1
+)
+LAMBDA_LOG_BATCH_SIZE = int(os.getenv('LAMBDA_LOG_BATCH_SIZE')) * world_size
+LAMDBA_LOG_DIR = os.getenv('LAMDBA_LOG_DIR')
+os.makedirs(LAMDBA_LOG_DIR, exist_ok=True)
+lambdalogger = Logger(
+    [
+        StdOutBackend(Verbosity.DEFAULT),
+        JSONStreamBackend(Verbosity.VERBOSE, os.path.join(LAMDBA_LOG_DIR, "bs_" + str(LAMBDA_LOG_BATCH_SIZE) + ".json")),
+    ]
+)
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -180,6 +196,7 @@ class SummarizationModule(BaseTransformer):
         return self.tokenizer.pad_token_id
 
     def training_step(self, batch, batch_idx) -> Dict:
+        t_start = time.time()
         loss_tensors, logits = self._step(batch)
         logs = {name: loss for name, loss in zip(self.loss_names, loss_tensors)}
         # tokens per batch
@@ -192,6 +209,7 @@ class SummarizationModule(BaseTransformer):
         # TODO(SS): make a wandb summary metric for this
 
         self.log("train_loss_ddp_avg", loss_tensors[0], on_step=True, prog_bar=True, logger=True, sync_dist=self.sync_dist)
+        lambdalogger.log(step="NONE", data={"throughput": LAMBDA_LOG_BATCH_SIZE / (time.time() - t_start), "logger": "lambda"}, verbosity=dllogger.Verbosity.DEFAULT)
         return {"loss": loss_tensors[0], "log": logs, "progress_bar":{"global_step":self.global_step}}
 
     # Can remove after pytorch lightning fix

@@ -19,11 +19,12 @@ ARG FROM_IMAGE_NAME=nvcr.io/nvidia/pytorch:21.02-py3
 ######
 # Tokenizers is only available pre-built on x86
 #
+
 FROM ${FROM_IMAGE_NAME} AS tokenizers_amd64
 WORKDIR /wheelhouse
 RUN pip download tokenizers==0.8.0
 
-FROM quay.io/pypa/manylinux2014_aarch64 as tokenizers_arm64
+FROM quay.io/pypa/manylinux2014_x86_64 as tokenizers_x86_64
 ARG PYVER=38
 RUN yum install -y openssl-devel
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly-2020-05-14 -y
@@ -42,10 +43,7 @@ RUN "${PYBIN}/pip" install setuptools-rust \
  && mkdir -p /wheelhouse \
  && mv dist/*.whl /wheelhouse
 
-ARG TARGETARCH
-FROM tokenizers_${TARGETARCH} AS tokenizers
-#
-#####
+FROM tokenizers_amd64 AS tokenizers
 
 
 FROM ${FROM_IMAGE_NAME}

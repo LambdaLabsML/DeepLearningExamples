@@ -129,27 +129,27 @@ class Seq2SeqLoggingCallback(pl.Callback):
         avg_steps_per_sec = train_time / best_n
         return train_time, unpadded_tokens, best_n, avg_steps_per_sec
 
-    def on_train_epoch_end(self, trainer, pl_module, outputs):
+    def on_train_epoch_end(self, trainer, pl_module, outputs=None):
+        pass
+        # try:
 
-        try:
+        #     train_time, unpadded_tokens, train_batches, avg_steps_per_sec = self.process_stats(self.train_time_epoch_list, outputs[0])
+        #     pl_module.log("train_throughput", unpadded_tokens/train_time, on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=self.sync_dist)
+        #     all_reduce_tokens = all_reduce_item(unpadded_tokens, "sum")
+        #     all_reduce_time = all_reduce_item(train_time, "mean")
+        #     all_reduce_avg_steps_per_sec = all_reduce_item(avg_steps_per_sec, "mean")
 
-            train_time, unpadded_tokens, train_batches, avg_steps_per_sec = self.process_stats(self.train_time_epoch_list, outputs[0])
-            pl_module.log("train_throughput", unpadded_tokens/train_time, on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=self.sync_dist)
-            all_reduce_tokens = all_reduce_item(unpadded_tokens, "sum")
-            all_reduce_time = all_reduce_item(train_time, "mean")
-            all_reduce_avg_steps_per_sec = all_reduce_item(avg_steps_per_sec, "mean")
+        #     #Accumulate
+        #     self.tokens = ((self.tokens * self.epochs) + all_reduce_tokens) / (self.epochs + 1)
+        #     self.train_time = ((self.train_time * self.epochs) + all_reduce_time) / (self.epochs + 1)
+        #     self.avg_steps_per_sec = ((self.avg_steps_per_sec * self.epochs) + all_reduce_avg_steps_per_sec) / (self.epochs + 1.0)
+        #     self.epochs +=1
 
-            #Accumulate
-            self.tokens = ((self.tokens * self.epochs) + all_reduce_tokens) / (self.epochs + 1)
-            self.train_time = ((self.train_time * self.epochs) + all_reduce_time) / (self.epochs + 1)
-            self.avg_steps_per_sec = ((self.avg_steps_per_sec * self.epochs) + all_reduce_avg_steps_per_sec) / (self.epochs + 1.0)
-            self.epochs +=1
-
-            #Reset
-            self.train_time_epoch_list = []
-        except ZeroDivisionError:
-            print("Train time is reported as 0? It's possible training is already complete!")
-            pass
+        #     #Reset
+        #     self.train_time_epoch_list = []
+        # except ZeroDivisionError:
+        #     print("Train time is reported as 0? It's possible training is already complete!")
+        #     pass
 
     def on_train_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
 
@@ -180,7 +180,7 @@ def get_checkpoint_callback(output_dir, metric, save_top_k=1, lower_is_better=Fa
         monitor=monitor,
         mode="min" if "loss" in metric else "max",
         save_top_k=save_top_k,
-        period=1,  # maybe save a checkpoint every time val is run, not just end of epoch.
+        # period=1,  # maybe save a checkpoint every time val is run, not just end of epoch.
     )
     return checkpoint_callback
 

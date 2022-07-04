@@ -15,4 +15,4 @@
 # limitations under the License.
 # ==============================================================================
 
-docker build --network=host . --rm -t bart_pyt
+DOCKER_BUILDKIT=1 docker build --network=host . --rm -t bart_pyt
