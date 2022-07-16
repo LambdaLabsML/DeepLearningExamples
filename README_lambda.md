@@ -383,11 +383,18 @@ $MAX_TARGET_LEN \
 $DATA_DIR \
 $NUM_GPU \
 $precision
+```
 
+## Recommendation
+
+### NCF
+
+```
+# Build image
+docker build . -t nvidia_ncf
 
 
 ```
-
 
 # Caveats
 
