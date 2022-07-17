@@ -1,3 +1,11 @@
 repos.cfg
 repos_init.cfg
 nvtool*
+*.pyc
+*.json
+
+PyTorch/LanguageModeling/BART/lightning_logs/*
+PyTorch/LanguageModeling/BART/results/*
+
+PyTorch/SpeechSynthesis/Tacotron2/LJSpeech-1.1/*
+*.tar.bz2
